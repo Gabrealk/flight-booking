@@ -1,0 +1,312 @@
+﻿@page "/FindReservations"
+@using Assignment3.Data
+
+<h1 class="h1">Find Reservation</h1>
+
+<!--sets up the inputs to find specific reservations-->
+<form class="form-group" @onsubmit="FindReservation">
+    <div class="flex-container">
+        <div class="flex-item">
+            <label for="reservationCode">Reservation Code:</label>
+            <input id="reservationCode" type="text" @bind="SearchReservationCode" class="input" />
+        </div>
+        <div class="flex-item">
+            <label for="airline">Airline:</label>
+            <input id="airline" type="text" @bind="SearchAirline" class="input" />
+        </div>
+        <div class="flex-item">
+            <label for="fullName">Full Name:</label>
+            <input id="fullName" type="text" @bind="SearchFullName" class="input"/>
+        </div>
+        <button type="submit" class="find-reservations">Find Reservations</button>
+    </div>
+</form>
+
+<!--styles the page accordingly-->
+<style>
+    .h1 {
+        text-align: center;
+    }
+
+    .form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .flex-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .flex-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        margin-right: 10px;
+    }
+
+    .label {
+        text-align: left;
+        margin-bottom: 10px;
+    }
+
+    .input {
+        width: 305px;
+    }
+
+    .find-reservations {
+        margin-left: auto;
+        margin-top: 25px;
+        width: 305px;
+        background-color: dodgerblue;
+        color: white;
+
+    }
+
+    .h2 {
+        margin-top: 30px;
+        text-align: center;
+    }
+
+    .reservation-list {
+        width: 1220px;
+    }
+
+    #selected-reservations {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .reservation-input {
+        width: 1220px;
+    }
+
+    #status {
+        margin-bottom: 10px;
+    }
+
+    #reserve-button {
+        background-color: dodgerblue;
+        color: white;
+        
+    }
+</style>
+
+
+<!--displays found reservations-->
+@if (Reservations != null && Reservations.Count > 0)
+{
+    <h2 class="h2">Found Reservations</h2>
+    <ul >
+        @foreach (var reservation in Reservations.Where(r => MatchesSearchCriteria(r)))
+        {
+            <li>
+                <button @onclick="() => SelectReservation(reservation)" class="reservation-list">
+                    @reservation.ReservationCode
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+<!--puts the reservation information into the placeholders-->
+@if (SelectedReservation != null)
+{
+    <h2 class="h2">Selected Reservation</h2>
+    <div id="selected-reservations">
+        <label for="reservationCode">Reservation Code:</label>
+        <input id="reservationCode" type="text" value="@SelectedReservation.ReservationCode" readonly class="reservation-input"/>
+
+        <label for="flightCode">Flight Code:</label>
+        <input id="flightCode" type="text" value="@SelectedReservation.SelectedFlight.FlightId" readonly class="reservation-input" />
+
+        <label for="airlineName">Airline Name:</label>
+        <input id="airlineName" type="text" value="@SelectedReservation.SelectedFlight.AirlineName" readonly class="reservation-input" />
+
+        <label for="cost">Cost:</label>
+        <input id="cost" type="text" value="@SelectedReservation.SelectedFlight.Cost" readonly class="reservation-input" />
+
+        <label for="name">Name:</label>
+        <input id="name" type="text" @bind="@SelectedReservation.FullName" class="reservation-input" />
+
+        <label for="citizenship">Citizenship:</label>
+        <input id="citizenship" type="text" @bind="@SelectedReservation.Citizenship" class="reservation-input" />
+
+        <label for="status">Status:</label>
+        <select id="status" @bind="@SelectedReservation.Status" class="reservation-input">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+
+        <button @onclick="UpdateReservation" id="reserve-button">Update</button>
+    </div>
+}
+
+//acts as placeholders for the reservation information
+else
+{
+    
+    <h2 class="h2">Selected Reservation</h2>
+    <div id="selected-reservations">
+        <label for="reservationCode">Reservation Code:</label>
+        <input id="reservationCode" type="text" readonly class="reservation-input" />
+
+        <label for="flightCode">Flight Code:</label>
+        <input id="flightCode" type="text" readonly class="reservation-input" />
+
+        <label for="airlineName">Airline Name:</label>
+        <input id="airlineName" type="text"  readonly class="reservation-input" />
+
+        <label for="cost">Cost:</label>
+        <input id="cost" type="text" readonly class="reservation-input" />
+
+        <label for="name">Name:</label>
+        <input id="name" type="text" class="reservation-input" />
+
+        <label for="citizenship">Citizenship:</label>
+        <input id="citizenship" type="text" class="reservation-input" />
+
+        <label for="status">Status:</label>
+        <select id="status" class="reservation-input">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+
+        <button id="reserve-button">Update</button>
+    </div>
+}
+
+@code{
+    string SearchReservationCode { get; set; }
+    string SearchAirline { get; set; }
+    string SearchFullName { get; set; }
+
+    List<Reservation> Reservations { get; set; }
+    List<Flight> flights = new List<Flight>();
+
+    Reservation SelectedReservation { get; set; }
+
+    void FindReservation()
+    {
+
+        SelectedReservation = null; // Reset the selected reservation when performing a new search
+    }
+
+    void SelectReservation(Reservation reservation)
+    {
+        SelectedReservation = reservation;
+    }
+
+
+
+    bool MatchesSearchCriteria(Reservation reservation)
+    {
+        return (string.IsNullOrEmpty(SearchReservationCode) || reservation.ReservationCode == SearchReservationCode)
+            && (string.IsNullOrEmpty(SearchAirline) || reservation.SelectedFlight.AirlineName == SearchAirline)
+            && (string.IsNullOrEmpty(SearchFullName) || reservation.FullName == SearchFullName);
+    }
+
+
+    //updates the reservation information
+    void UpdateReservation()
+    {
+        // Update the reservation in the Reservations list
+        var index = Reservations.FindIndex(r => r.ReservationCode == SelectedReservation.ReservationCode);
+        Reservations[index] = SelectedReservation;
+
+        // Update the reservations.csv file
+        try
+        {
+            List<string> lines = new List<string>();
+
+            foreach (var reservation in Reservations)
+            {
+                string line = $"{reservation.ReservationCode},{reservation.SelectedFlight.FlightId},{reservation.SelectedFlight.AirlineName},{reservation.SelectedFlight.Cost},{reservation.FullName},{reservation.Citizenship},{reservation.Status}";
+                lines.Add(line);
+            }
+
+            System.IO.File.WriteAllLinesAsync("C:/git hub and other stuff/Object-Oriented-1/programming 2(c sharp)/Assignment2/Assignment3/Resources/Raw/reservation.csv", lines);
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Failed to update reservations.csv");
+        }
+    }
+
+
+    //________ON PAGE LOAD LOGIC BELOW ________
+
+    public async Task LoadReservations()
+    {
+        string[] lines = await System.IO.File.ReadAllLinesAsync("C:/git hub and other stuff/Object-Oriented-1/programming 2(c sharp)/Assignment2/Assignment3/Resources/Raw/reservation.csv");
+
+        List<Reservation> loadedReservations = new List<Reservation>();
+
+        foreach (string line in lines)
+        {
+            string[] parts = line.Split(',');
+
+            string reservationCode = parts[0];
+            string flightCode = parts[1];
+            string airline = parts[2];
+            decimal cost = decimal.Parse(parts[3]);
+            string fullName = parts[4];
+            string citizenship = parts[5];
+            string status = parts[6];
+
+            // Find the matching Flight object based on flight code
+            Flight selectedFlight = flights.FirstOrDefault(f => f.FlightId == flightCode);
+
+            if (selectedFlight != null)
+            {
+                Reservation reservation = new Reservation(reservationCode, selectedFlight, fullName, citizenship, status);
+                loadedReservations.Add(reservation);
+            }
+        }
+
+        Reservations = loadedReservations;
+    }
+
+    //loads the flights from the filepath
+    public async Task LoadFlights()
+    {
+        try
+        {
+            string[] lines = await System.IO.File.ReadAllLinesAsync("C:/git hub and other stuff/Object-Oriented-1/programming 2(c sharp)/Assignment2/Assignment3/Resources/Raw/flights.csv");
+
+            foreach (string line in lines)
+            {
+                string[] parts = line.Split(',');
+
+                Flight flight = new Flight(
+                    flightId: parts[0],
+                    airlineName: parts[1],
+                    departureAirport: parts[2],
+                    arrivalAirport: parts[3],
+                    day: parts[4],
+                    time: parts[5],
+                    passengers: int.Parse(parts[6]),
+                    cost: decimal.Parse(parts[7])
+                );
+                flights.Add(flight);
+
+
+            }
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("awehawda");
+        }
+    }
+    // loads the page when it pops up
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFlights();
+        await LoadReservations();
+    }
+
+
+}
